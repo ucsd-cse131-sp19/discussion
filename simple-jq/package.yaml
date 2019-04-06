@@ -1,0 +1,69 @@
+name:                simple-jq
+version:             0.1.0.0
+github:              "ucsd-cse131-sp19/discussion"
+license:             OtherLicense
+author:              "Rami Gokhan Kici"
+maintainer:          "gokhankici@gmail.com"
+
+extra-source-files:
+- README.md
+
+synopsis:            Notes & code for the discussion sections of UCSD CSE 131 Spring 2019
+category:            Teaching
+
+description:         Please see the README on Github at <https://github.com/ucsd-cse131-sp19/discussion#readme>
+
+dependencies: 
+- base >= 4.7 && < 5
+- pretty
+- megaparsec
+- text
+
+library:
+  source-dirs: src
+  ghc-options:
+  - -Werror
+  - -O2
+  - -fdefer-type-errors
+  - -fwarn-incomplete-patterns
+  - -fwarn-incomplete-record-updates
+  - -fwarn-incomplete-uni-patterns
+  - -fwarn-missing-signatures
+  - -fwarn-name-shadowing
+  - -fwarn-orphans
+  - -fwarn-overlapping-patterns
+  - -fwarn-redundant-constraints
+  - -fwarn-tabs
+  - -fwarn-unused-binds
+  - -fwarn-unused-imports
+  - -fwarn-unused-matches
+
+executables:
+  simple-jq:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    - -Werror
+    - -O2
+    dependencies:
+    - simple-jq
+
+tests:
+  simple-jq-test:
+    main:                Test.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    - -Wall
+    - -Werror
+    - -O2
+    dependencies:
+    - simple-jq
+    - hspec
+    - hspec-core
