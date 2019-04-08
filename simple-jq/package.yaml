@@ -65,5 +65,7 @@ tests:
     - -O2
     dependencies:
     - simple-jq
-    - hspec
-    - hspec-core
+    - tasty
+    - tasty-hunit
+    - directory
+    - filepath

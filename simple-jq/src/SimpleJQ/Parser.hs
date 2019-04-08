@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE MultiWayIf #-}
 
 module SimpleJQ.Parser ( SimpleJQ.Parser.parse
                        , test
@@ -7,8 +8,10 @@ module SimpleJQ.Parser ( SimpleJQ.Parser.parse
 import           SimpleJQ.Types
 
 import           Control.Applicative
+import           Data.Char
 import           Data.Text (Text)
 import           Data.Void
+import           Text.Printf
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -27,7 +30,7 @@ parse fp input =
 type Parser = Parsec (ErrorFancy Void) Text
 
 parseJSON :: Parser JSON
-parseJSON =
+parseJSON = withSC $
   parseObject     <|>
   parseArray      <|>
   parseJSONString <|>
@@ -37,37 +40,59 @@ parseJSON =
 
 
 parseObject :: Parser JSON
-parseObject = between lbrace rbrace (JObject <$> sepBy parseMember comma)
+parseObject = between lbrace rbrace (withSC $ JObject <$> sepBy parseMember (withSC comma))
   where
-    parseMember = (,) <$> (parseString <* colon) <*> parseJSON
+    parseMember = (,) <$> (parseString <* withSC colon) <*> parseJSON
 
 parseJSONString :: Parser JSON
-parseJSONString = JString <$> parseString
+parseJSONString = withSC $ JString <$> parseString
 
 parseJSONNumber :: Parser JSON
-parseJSONNumber = JNumber <$> parseNumber
+parseJSONNumber = withSC $ JNumber <$> parseNumber
 
 parseArray :: Parser JSON
-parseArray = between lbrack rbrack (JArray <$> sepBy parseJSON comma)
+parseArray = between lbrack rbrack (withSC $ JArray <$> sepBy parseJSON (withSC comma))
 
 parseBoolean :: Parser JSON
-parseBoolean = JBoolean <$> (parseT <|> parseF)
+parseBoolean = withSC $ JBoolean <$> (parseT <|> parseF)
   where
     parseT = symbol "true"  *> return True
     parseF = symbol "false" *> return False
 
 parseNull :: Parser JSON
-parseNull = symbol "null" *> return JNull
+parseNull = withSC $ symbol "null" *> return JNull
 
 -- -----------------------------------------------------------------------------
 -- Helper Functions
 -- -----------------------------------------------------------------------------
 
 parseString :: Parser String
-parseString = char '"' *> {- fmap T.pack -} (many validChar) <* char '"'
+parseString = char '"' *> many validChar <* char '"'
   where
+    getc :: Parser Char
+    getc = notChar '"'
+
     validChar :: Parser Char
-    validChar = label "character" $ notChar '"'
+    validChar = label "character" $ do
+      c1 <- getc
+      if | generalCategory c1 == Control ->
+           customFailure $ ErrorFail $ "got control character inside string"
+         | c1 == '\\' -> do
+             c2 <- printChar
+             case c2 of
+               '"'  -> return '"'
+               '\\' -> return '\\'
+               '/'  -> return '/'
+               'b'  -> return '\b'
+               'f'  -> return '\f'
+               'n'  -> return '\n'
+               'r'  -> return '\r'
+               't'  -> return '\t'
+               'u'  -> do digits <- count 4 hexDigitChar
+                          let n = read ("0x" ++ digits) :: Int
+                          return $ toEnum n
+               _ -> customFailure $ ErrorFail $ printf "got unrecognized character %c after \\" c2
+         | otherwise -> return c1
 
 parseNumber :: Parser Double
 parseNumber = do
@@ -80,7 +105,7 @@ parseNumber = do
     parseInt = label "int" $ do
       sign <- optional (char '-')
       rest <- ((:) <$> zero <*> return []) <|>
-              ((:) <$> onenine <*> digits)
+              ((:) <$> onenine <*> many digit)
       return $ case sign of
                  Nothing -> rest
                  Just s  -> s : rest
@@ -89,30 +114,33 @@ parseNumber = do
     onenine = label "onenine" $ fromChars "123456789"
     digit   = zero <|> onenine
 
-    digits  = some digit
-
     fromChars cs = choice [ char c | c <- cs ]
     withDef a p = p <|> return a
 
-    parseFrac = label "frac" $ withDef "" $ (char '.') *> digits
+    parseFrac = label "frac" $ withDef "" $ (char '.') *> some digit
 
     parseExp = label "exp" $ withDef "" $ do
       e <- fromChars "eE"
       s <- withDef '+' $ fromChars "+-"
-      rest <- digits
+      rest <- some digit
       return $ e : s : rest
       
 whole :: Parser a -> Parser a
-whole p = spaceConsumer *> p <* spaceConsumer <* eof
+whole p = withSC p <* eof
+
+withSC :: Parser a -> Parser a
+withSC p = spaceConsumer *> p <* spaceConsumer
 
 spaceConsumer :: Parser ()
-spaceConsumer = L.space (space1 <|> nl) empty empty
+spaceConsumer = L.space spc empty empty
+  where
+    spc = choice (char <$> ws) >> return ()
+    ws = [ toEnum n :: Char
+         | n <- [9, 0xA, 0xD, 0x20]
+         ]
 
 symbol :: Text -> Parser Text
 symbol = L.symbol spaceConsumer
-
-nl :: Parser ()
-nl = newline *> return ()
 
 comma, colon, lbrace, rbrace, lbrack, rbrack :: Parser Char
 comma  = char ','

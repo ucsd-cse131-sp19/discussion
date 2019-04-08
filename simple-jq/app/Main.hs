@@ -1,11 +1,13 @@
 module Main where
 
-import SimpleJQ.Calculate
-import SimpleJQ.Parser
+import SimpleJQ.Types
+import SimpleJQ.Runner
 
-import           System.Environment
-import           System.Exit
-import qualified Data.Text.IO as TIO
+import System.Environment
+import System.Exit
+
+calculate :: JSON -> ()
+calculate _ = ()
 
 main :: IO ()
 main = do
@@ -13,8 +15,8 @@ main = do
   filename <- case args of
                 []  -> putStrLn "Run with a json file as an argument !" >> exitFailure
                 f:_ -> return f
-  input <- TIO.readFile filename
-  case parse filename input of
+  result <- run filename
+  case result of
     Right json  -> print $ calculate json
     Left errMsg -> do putStrLn errMsg
                       exitFailure
