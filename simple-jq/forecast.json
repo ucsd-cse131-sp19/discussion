@@ -1,1 +1,57 @@
-[{"low":"56","high":"65","skycodeday":"29","skytextday":"Partly Cloudy","date":"2019-04-04","day":"Thursday","shortday":"Thu","precip":"0","degType":"F"},{"low":"59","high":"66","skycodeday":"30","skytextday":"Partly Sunny","date":"2019-04-05","day":"Friday","shortday":"Fri","precip":"70","degType":"F"},{"low":"59","high":"66","skycodeday":"30","skytextday":"Partly Sunny","date":"2019-04-06","day":"Saturday","shortday":"Sat","precip":"70","degType":"F"},{"low":"62","high":"70","skycodeday":"30","skytextday":"Partly Sunny","date":"2019-04-07","day":"Sunday","shortday":"Sun","precip":"0","degType":"F"},{"low":"61","high":"74","skycodeday":"30","skytextday":"Partly Sunny","date":"2019-04-08","day":"Monday","shortday":"Mon","precip":"0","degType":"F"}]
+[
+  {
+    "low": 56,
+    "high": 65,
+    "skycodeday": 29,
+    "skytextday": "Partly Cloudy",
+    "date": "2019-04-04",
+    "day": "Thursday",
+    "shortday": "Thu",
+    "precip": 0,
+    "degType": "F"
+  },
+  {
+    "low": 59,
+    "high": 66,
+    "skycodeday": 30,
+    "skytextday": "Partly Sunny",
+    "date": "2019-04-05",
+    "day": "Friday",
+    "shortday": "Fri",
+    "precip": 70,
+    "degType": "F"
+  },
+  {
+    "low": 59,
+    "high": 66,
+    "skycodeday": 30,
+    "skytextday": "Partly Sunny",
+    "date": "2019-04-06",
+    "day": "Saturday",
+    "shortday": "Sat",
+    "precip": 70,
+    "degType": "F"
+  },
+  {
+    "low": 62,
+    "high": 70,
+    "skycodeday": 30,
+    "skytextday": "Partly Sunny",
+    "date": "2019-04-07",
+    "day": "Sunday",
+    "shortday": "Sun",
+    "precip": 0,
+    "degType": "F"
+  },
+  {
+    "low": 61,
+    "high": 74,
+    "skycodeday": 30,
+    "skytextday": "Partly Sunny",
+    "date": "2019-04-08",
+    "day": "Monday",
+    "shortday": "Mon",
+    "precip": 0,
+    "degType": "F"
+  }
+]

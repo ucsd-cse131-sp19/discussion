@@ -1,19 +1,16 @@
 module Main where
 
-import SimpleJQ.Types
 import SimpleJQ.Runner
 
 import System.Environment
 import System.Exit
 
-calculate :: JSON -> ()
-calculate _ = ()
-
 main :: IO ()
 main = do
   args <- getArgs
   filename <- case args of
-                []  -> putStrLn "Run with a json file as an argument !" >> exitFailure
+                []  -> do putStrLn "Run with a json file as an argument !"
+                          exitFailure
                 f:_ -> return f
   result <- run filename
   case result of

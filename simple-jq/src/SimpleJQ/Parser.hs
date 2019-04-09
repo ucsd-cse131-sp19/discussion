@@ -2,22 +2,19 @@
 {-# LANGUAGE MultiWayIf #-}
 
 module SimpleJQ.Parser ( SimpleJQ.Parser.parse
-                       , test
+                       , parse'
                        ) where
 
 import           SimpleJQ.Types
 
 import           Control.Applicative
 import           Data.Char
-import           Data.Text (Text)
+import           Data.Text (Text, pack)
 import           Data.Void
 import           Text.Printf
 import           Text.Megaparsec
 import           Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-
-test :: Text -> Maybe JSON
-test t = parseMaybe (whole parseJSON) t
 
 -- | Given the filename and the contents of the file, parses it into JSON.
 -- Specification is taken from https://www.json.org/
@@ -26,6 +23,10 @@ parse fp input =
   case runParser (whole parseJSON) fp input of
     Right j     -> Right j
     Left bundle -> Left $ parseErrorPretty bundle
+
+-- | Parse the given string as a json value.
+parse' :: String -> Maybe JSON
+parse' = parseMaybe (whole parseJSON) . pack
 
 type Parser = Parsec (ErrorFancy Void) Text
 
@@ -99,7 +100,8 @@ parseNumber = do
   n <- parseInt
   f <- parseFrac
   e <- parseExp
-  return $ read $ n ++ f ++ e
+  let str = n ++ f ++ e
+  return $ read str
 
   where
     parseInt = label "int" $ do
@@ -117,7 +119,7 @@ parseNumber = do
     fromChars cs = choice [ char c | c <- cs ]
     withDef a p = p <|> return a
 
-    parseFrac = label "frac" $ withDef "" $ (char '.') *> some digit
+    parseFrac = label "frac" $ withDef "" $ (:) <$> (char '.') <*> some digit
 
     parseExp = label "exp" $ withDef "" $ do
       e <- fromChars "eE"

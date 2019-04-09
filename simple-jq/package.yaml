@@ -54,7 +54,7 @@ executables:
 
 tests:
   simple-jq-test:
-    main:                Test.hs
+    main:                Main.hs
     source-dirs:         test
     ghc-options:
     - -threaded
