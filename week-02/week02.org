@@ -1,0 +1,185 @@
+#+TITLE: Week 2 Notes
+#+AUTHOR: Rami Gökhan Kıcı
+#+OPTIONS: toc:nil num:0
+
+* Haskell Data Types
+
+** Data Types
+*** Expression
+
+#+BEGIN_SRC haskell
+type Id = String
+
+data Prim1 = Add1 | Sub1
+
+data Bind a = Bind Id a
+
+data Expr a =
+    Number  Integer                     a -- 0, 1, ...
+  | Prim1   Prim1    (Expr a)           a -- add1(e), sub1(e)
+  | Let     (Bind a) (Expr a)  (Expr a) a -- let b = e1 in e2
+  | Id      Id                          a -- var
+
+type Bare     = Expr SourceSpan
+type BareBind = Bind SourceSpan
+#+END_SRC
+
+*** Accessing the stack
+
+#+BEGIN_SRC haskell
+data Env = Env { envBinds :: [(Id, Int)]
+               , _envMax  :: !Int
+               }
+           deriving (Show)
+
+emptyEnv :: Env
+emptyEnv = Env [] 0
+
+lookupEnv :: Id -> Env -> Maybe Int
+lookupEnv k env = lookup k (envBinds env)
+
+pushEnv :: Bind a -> Env -> (Int, Env)
+pushEnv x (Env bs n) = (n', Env bs' n')
+  where
+    bs'              = (bindId x, n') : bs
+    n'               = 1 + n
+
+type Id = String
+
+data Bind a = Bind Id a
+
+bindId :: Bind a -> Id
+bindId (Bind x _) = x
+
+#+END_SRC
+
+*** x86 Instruction
+
+#+BEGIN_SRC haskell
+type Nat = Int
+
+data Reg = EAX | ESP
+
+data Arg
+  = Const     Int
+  | Reg       Reg
+  | RegOffset Nat Reg
+
+data Instruction
+  = IMov Arg Arg
+  | IAdd Arg Arg
+  | IRet
+#+END_SRC
+
+Assembly guide: http://www.cs.virginia.edu/~evans/cs216/guides/x86.html
+
+** Throwing a compile-time error
+
+#+BEGIN_SRC haskell
+compileEnv env (Id x l) = panic ("cannot compile variable " ++ x) l
+#+END_SRC
+
+** Files need fixing
+
+1. In =lib/Language/Adder/Asm.hs=
+
+#+BEGIN_SRC haskell
+instrAsm :: Instruction -> Text
+regAsm   :: Reg -> Text
+argAsm   :: Arg -> Text
+#+END_SRC
+
+2. In =lib/Language/Adder/Compiler.hs=
+
+#+BEGIN_SRC haskell
+compileEnv :: Env -> AExp -> [Instruction]
+#+END_SRC
+
+3. Add test cases to =tests/yourTests.json=
+
+* Stack Allocation
+
+** Why do we need stack space ?
+
+We have limited number of registers to store the results of partial
+computations.
+
+#+BEGIN_SRC ocaml
+let a = ... in
+let b = ... in
+let c = ... in
+     ...
+let z = ... in
+f(a, b, c, ..., z)
+#+END_SRC
+
+** Stack Layout
+
+https://ucsd-cse131-sp19.github.io/web/static/img/stack-layout.png
+
+* Let Bindings
+
+Let's compile the following Adder program into assembly:
+
+#+BEGIN_SRC ocaml
+let a = let a = add1(1) in 
+        add1(a) in
+let b = add1(a) in 
+add1(b)
+#+END_SRC
+
+* GHCi Helpers
+
+** Print AST of a file
+
+#+BEGIN_SRC haskell
+import Language.Adder.Parser
+e <- parseFile "tests/input/week02.adder"
+#+END_SRC
+
+** Adding SourceSpan to custom expressions
+
+#+BEGIN_SRC haskell
+-- addSpan :: Expr a -> AExpr
+let addSpan = fmap (const junkSpan) 
+#+END_SRC
+
+* Writing Tests
+
+** Test Format
+#+BEGIN_SRC 
+{ "name"   : NAME
+, "code"   : "file" | PROGRAM
+, "result" : { "value" : RESULT } | { "failure" : ERROR }
+}
+#+END_SRC
+
+#+BEGIN_SRC js
+[
+    {
+        "name"   : "nyi",
+        "code"   : "let x = 10 in x",
+        "result" : { "value": "10" }
+    },
+    {
+        "name"   : "five",
+        "code"   : "file",
+        "result" : { "value": "5" }
+    },
+    {
+        "name"   : "lets-unb",
+        "code"   : "file",
+        "result" : { "failure": "" }
+    }
+]
+#+END_SRC
+
+** Testing with =make=
+
+#+BEGIN_SRC sh
+make clean tests/output/week02.s     # generate assembly file
+make clean tests/output/week02.run   # generate binary file
+./tests/output/week02.run            # execute the binary
+gdb tests/output/week02.run          # debug the binary file
+#+END_SRC   
+
