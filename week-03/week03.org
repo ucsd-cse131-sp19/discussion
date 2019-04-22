@@ -313,13 +313,13 @@ else:
 
 ** Ex 4
 
-[[examples/ex4.s.sol][Ex 4 solution]]
+[[examples/ex4-sol.s][Ex 4 solution]]
 
 ** Ex 5
 
-[[examples/ex5.s.sol][Ex 5 solution]]
+[[examples/ex5-sol.s][Ex 5 solution]]
 
 ** Ex 6
 
-[[examples/ex6.s.sol][Ex 6 solution]]
+[[examples/ex6-sol.s][Ex 6 solution]]
 
