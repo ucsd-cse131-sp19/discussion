@@ -1,0 +1,218 @@
+#+TITLE: Week 3 - Binary Operators, Conditionals & ANF
+#+AUTHOR: Rami Gökhan Kıcı
+#+OPTIONS: toc:nil num:0
+
+* New additions to our compiler
+
+1. Branches (=if= expressions)
+2. Binary operators
+3. Normalization
+
+* Abstract Syntax
+
+#+BEGIN_SRC haskell
+data Expr a
+  = Number  Integer                     a
+  | Id      Id                          a
+  | Prim1   Prim1    (Expr a)           a
+  | Prim2   Prim2    (Expr a)  (Expr a) a -- !!! NEW !!!
+  | Let     (Bind a) (Expr a)  (Expr a) a
+  | If      (Expr a) (Expr a)  (Expr a) a -- !!! NEW !!!
+
+data Prim2 = Plus | Minus | Times
+#+END_SRC
+
+* A-Normal Form
+
+Must read: [[https://ucsd-progsys.github.io/liquidhaskell-blog/2016/09/01/normal-forms.lhs/][Prof. Jhala's blog post on ANF]]
+
+** Checking whether an expression is in ANF Form
+
+Taken from =lib/Language/Boa/Types.hs=:
+
+#+BEGIN_SRC haskell
+isAnf :: Expr a -> Bool
+isAnf (Number  _ _)    = True
+isAnf (Id      _ _)    = True
+isAnf (Prim1 _ e _)    = isAnf e
+isAnf (Prim2 _ e e' _) = isImm e && isImm e'
+isAnf (If c t e _)     = isAnf c && isAnf t && isAnf e
+isAnf (Let _ e e' _)   = isAnf e && isAnf e'
+
+isImm :: Expr a -> Bool
+isImm (Number  _ _) = True
+isImm (Id      _ _) = True
+isImm _             = False
+#+END_SRC
+
+** Normalizing an Expression
+
+#+BEGIN_SRC haskell
+type AnfExpr = Expr
+type ImmExpr = Expr
+
+anf :: Int -> Expr a -> (Int, AnfExpr a)
+anf i (Number n l)  = (i, Number n l)
+anf i (Id     x l)  = (i, Id     x l)
+anf i (Prim1 o e l) = (i', Prim1 o e' l)
+  where
+    (i', e') = anf i e
+anf i (If c e1 e2 l) = (i''', If c' e1' e2' l)
+  where
+    (i'  , c')  = anf i   c
+    (i'' , e1') = anf i'  e1
+    (i''', e2') = anf i'' e2
+anf i (Let x e b l)     = error "TBD:anf:let"
+anf i (Prim2 o e1 e2 l) = error "TBD:anf:prim2"
+#+END_SRC
+
+#+BEGIN_SRC haskell
+imm :: Int -> AnfExpr a -> (Int, Binds a, ImmExpr a)
+imm i (Prim1 o e1 l)    = (i'', bs, mkId v l)
+  where
+    (i' , b1s, v1)      = imm i e1
+    (i'', v)            = fresh l i'
+    bs                  = (v, (Prim1 o v1 l, l)) : b1s
+imm i e@(If _ _ _  l)   = immExp i e l
+imm i e@(Let _ _ _ l)   = immExp i e l
+imm i (Number n l)      = error "TBD:imm:Number"
+imm i (Id x l)          = error "TBD:imm:Id"
+imm i (Prim2 o e1 e2 l) = error "TBD:imm:prim2"
+
+immExp :: Int -> AnfExpr a -> a -> (Int, Binds a, ImmExpr a)
+immExp i e l  = (i'', bs, mkId v l)
+  where
+    (i' , e') = anf i e
+    (i'', v)  = fresh l i'
+    bs        = [(v, (e', l))]
+
+mkId :: Bind a -> a -> Expr a
+mkId x l = Id (bindId x) l
+#+END_SRC
+
+** Examples
+
+#+BEGIN_SRC ocaml
+TODO
+#+END_SRC
+
+* New Expressions
+** If expression
+
+The value of the if expression is:
+- the value of the =then= branch, if the value of the condition is non-zero
+- the value of the =else= branch, if the value of the condition is zero
+
+#+BEGIN_SRC haskell
+compileEnv :: Env -> AExp -> [Instruction]
+compileEnv env (If v e1 e2 l) = error "TBD:compileEnv:If"
+#+END_SRC
+
+** Compiling unary operators
+
+*Note:* Operand is not necessarily an immediate value (i.e. constant or a
+variable).
+
+#+BEGIN_SRC haskell
+compilePrim1 :: Tag -> Env -> Prim1 -> AExp -> [Instruction]
+compilePrim1 l env Add1 v = error "TBD:compilePrim1:Add1"
+compilePrim1 l env Sub1 v = error "TBD:compilePrim1:Sub1"
+#+END_SRC
+
+** Compiling binary operators
+
+*Note:* Both operands are immediate values.
+
+#+BEGIN_SRC haskell
+compilePrim2 :: Tag -> Env -> Prim2 -> IExp -> IExp -> [Instruction]
+compilePrim2 l env Plus  v1 v2 = error "TBD:compilePrim2:Plus"
+compilePrim2 l env Minus v1 v2 = error "TBD:compilePrim2:Minus"
+compilePrim2 l env Times v1 v2 = error "TBD:compilePrim2:Times"
+#+END_SRC
+
+Very useful helper function:
+
+#+BEGIN_SRC haskell
+compileImm :: Env -> IExp -> Instruction
+compileImm env v = IMov (Reg EAX) (immArg env v)
+
+immArg :: Env -> IExp -> Arg
+immArg _   (Number n _)  = repr n
+immArg env e@(Id x _)    = error "TBD:immArg:Id"
+  where
+    err                  = abort (errUnboundVar (sourceSpan e) x)
+immArg _   e             = panic msg (sourceSpan e)
+  where
+    msg                  = "Unexpected non-immExpr in immArg: " ++ show (void e)
+#+END_SRC
+
+** Examples
+
+#+BEGIN_SRC ocaml
+TODO
+#+END_SRC
+
+* New Assembly Commands
+** Updated data type declaration
+
+#+BEGIN_SRC haskell
+data Instruction
+  = IMov    Arg   Arg           -- move
+  | IAdd    Arg   Arg           -- addition
+  | ISub    Arg   Arg           -- substraction
+  | IMul    Arg   Arg           -- multiply           *new*
+  | ICmp    Arg   Arg           -- compare            *new*
+  | ILabel  Label               -- assembly label     *new*
+  | IJe     Label               -- jump if equal      *new*
+  | IJne    Label               -- jump if not equal  *new*
+  | IJmp    Label               -- unconditional jump *new*
+  | IRet                        -- return
+
+type Tag = Int
+
+data Label = BranchTrue Tag
+           | BranchDone Tag
+#+END_SRC
+
+** How fresh labels are generated
+
+#+BEGIN_SRC haskell
+compileEnv :: Env -> AExp -> [Instruction]
+compileEnv env (If v e1 e2 l) = error "TBD:compileEnv:If"
+
+labelAsm :: Label -> Text
+labelAsm (BranchTrue i) = printf "label_%d_true" i
+labelAsm (BranchDone i) = printf "label_%d_done" i
+#+END_SRC
+
+* Testing
+** New test case syntax
+
+#+BEGIN_SRC
+{ "name"   : NAME
+, "code"   : "file" | PROGRAM
+, "result" : { "value" : RESULT } | { "failure" : ERROR }
+, "anf"    : true | false
+}
+#+END_SRC
+
+#+BEGIN_SRC js
+[
+  {
+    "name"   : "prim1",
+    "code"   : "add1(add1(add1(add1(x))))",
+    "result" : { "value": "add1(add1(add1(add1(x))))" },
+    "anf"    : true
+  }
+]
+#+END_SRC
+
+** Testing only ANF transformation
+
+Use =tests/output/FILE.anf= as the =make= target:
+
+#+BEGIN_SRC sh
+make clean tests/output/forty_one.anf && \
+    cat tests/output/forty_one.anf
+#+END_SRC
+
