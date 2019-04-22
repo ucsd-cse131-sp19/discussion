@@ -24,7 +24,7 @@ data Prim2 = Plus | Minus | Times
 
 * A-Normal Form
 
-Must read: [[https://ucsd-progsys.github.io/liquidhaskell-blog/2016/09/01/normal-forms.lhs/][Prof. Jhala's blog post on ANF]]
+[[https://ucsd-progsys.github.io/liquidhaskell-blog/2016/09/01/normal-forms.lhs/][Prof. Jhala's blog post on ANF]]
 
 ** Checking whether an expression is in ANF Form
 
@@ -90,10 +90,37 @@ mkId :: Bind a -> a -> Expr a
 mkId x l = Id (bindId x) l
 #+END_SRC
 
-** Examples
+** Ex 1
+
+Convert the following expression into a-normal form:
 
 #+BEGIN_SRC ocaml
-TODO
+(
+  let x = 10 in
+  let y = 10 in
+  (x + y) + 5
+) + (
+  let y = 20 in y - 5
+)
+#+END_SRC
+
+** Ex 2
+
+Convert the following expression into a-normal form:
+
+#+BEGIN_SRC ocaml
+add1(sub1(add1(sub1(x))))
+#+END_SRC
+
+** Ex 3
+
+Convert the following expression into a-normal form:
+
+#+BEGIN_SRC python
+if (20+30)+40:
+    (1 + add1(2)) + sub1(3 + 4) + 10
+else:
+    12
 #+END_SRC
 
 * New Expressions
@@ -144,12 +171,6 @@ immArg env e@(Id x _)    = error "TBD:immArg:Id"
 immArg _   e             = panic msg (sourceSpan e)
   where
     msg                  = "Unexpected non-immExpr in immArg: " ++ show (void e)
-#+END_SRC
-
-** Examples
-
-#+BEGIN_SRC ocaml
-TODO
 #+END_SRC
 
 * New Assembly Commands
@@ -215,4 +236,90 @@ Use =tests/output/FILE.anf= as the =make= target:
 make clean tests/output/forty_one.anf && \
     cat tests/output/forty_one.anf
 #+END_SRC
+
+* More Examples
+** Ex 4
+
+Generate the assembly from the following ANF expression
+
+#+BEGIN_SRC ocaml
+let anf1 = (let x    = 10,
+                y    = 10,
+                anf0 = x + y
+            in  anf0 + 5),
+    anf2 = (let y = 20
+            in  y - 5)
+in  anf1 + anf2
+#+END_SRC
+
+** Ex 5
+
+Generate the assembly from the following ANF expression
+
+#+BEGIN_SRC ocaml
+let x = 0 in add1(sub1(add1(sub1(x))))
+#+END_SRC
+
+** Ex 6
+
+Generate the assembly from the following ANF expression
+
+#+BEGIN_SRC
+if (let anf0 = 20 + 30
+    in  anf0 + 40):
+  let anf1 = add1(2),
+      anf2 = 1 + anf1,
+      anf3 = 3 + 4,
+      anf4 = sub1(anf3),
+      anf5 = anf2 + anf4
+  in anf5 + 10
+else:
+  12
+#+END_SRC
+
+* Answers
+** Ex 1
+
+#+BEGIN_SRC
+let anf1 = (let x    = 10,
+                y    = 10,
+                anf0 = x + y
+            in  anf0 + 5),
+    anf2 = (let y = 20
+            in  y - 5)
+in  anf1 + anf2
+#+END_SRC
+
+** Ex 2
+
+#+BEGIN_SRC
+add1(sub1(add1(sub1(x))))
+#+END_SRC
+
+** Ex 3
+
+#+BEGIN_SRC
+if (let anf0 = 20 + 30
+    in  anf0 + 40):
+  let anf1 = add1(2),
+      anf2 = 1 + anf1,
+      anf3 = 3 + 4,
+      anf4 = sub1(anf3),
+      anf5 = anf2 + anf4
+  in anf5 + 10
+else:
+  12
+#+END_SRC
+
+** Ex 4
+
+[[examples/ex4.s.sol][Ex 4 solution]]
+
+** Ex 5
+
+[[examples/ex5.s.sol][Ex 5 solution]]
+
+** Ex 6
+
+[[examples/ex6.s.sol][Ex 6 solution]]
 
