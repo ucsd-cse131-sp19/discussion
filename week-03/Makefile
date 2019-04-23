@@ -1,9 +1,9 @@
-EXAMPLE_DIR := examples
+EXAMPLE_DIR = examples
 
-ASM_FILES := $(wildcard $(EXAMPLE_DIR)/*.s)
-EXE_FILES := $(patsubst %.s,%.run,$(ASM_FILES))
-OBJ_FILES := $(patsubst %.s,%.o,$(ASM_FILES))
-EXAMPLES  := $(patsubst $(EXAMPLE_DIR)/%.s,%,$(ASM_FILES))
+ASM_FILES = $(wildcard $(EXAMPLE_DIR)/*.s)
+EXE_FILES = $(patsubst %.s,%.run,$(ASM_FILES))
+OBJ_FILES = $(patsubst %.s,%.o,$(ASM_FILES))
+EXAMPLES  = $(patsubst $(EXAMPLE_DIR)/%.s,%,$(ASM_FILES))
 
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
