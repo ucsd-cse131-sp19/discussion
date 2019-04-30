@@ -1,0 +1,126 @@
+#+TITLE: Week 4 - Cobra Review
+#+AUTHOR: Rami Gökhan Kıcı
+#+OPTIONS: toc:nil num:0
+
+* Cobra Types
+
+#+BEGIN_SRC haskell
+data Expr a
+  = Number  !Integer                       a
+  | Boolean !Bool                          a
+  | Id      !Id                            a
+  | Prim1   !Prim1    !(Expr a)            a
+  | Prim2   !Prim2    !(Expr a)  !(Expr a) a
+  | Let     !(Bind a) !(Expr a)  !(Expr a) a
+  | If      !(Expr a) !(Expr a)  !(Expr a) a
+
+data Prim1 = Add1
+           | Sub1
+           | Print              -- !!! NEW !!!
+           | IsNum              -- !!! NEW !!!
+           | IsBool             -- !!! NEW !!!
+
+data Prim2 = Plus
+           | Minus
+           | Times
+           | Less               -- !!! NEW !!!
+           | Greater            -- !!! NEW !!!
+           | Equal              -- !!! NEW !!!
+#+END_SRC
+
+#+BEGIN_SRC haskell
+Boolean True  ----> HexConst 0x80000001
+Boolean False ----> HexConst 0x00000001
+Number  0     ----> HexConst 0x00000000
+Number  3     ----> HexConst 0x00000006
+Number  (-3)  ----> HexConst 0xFFFFFFFA
+#+END_SRC
+
+* Runtime Type Checking
+
+- =add1=, =sub1=, and binary operators expect a number. Otherwise, raise an
+  error with message "expected a number"
+- =if= condition expects a boolean. Otherwise, raise an error with message
+  "expected a boolean".
+- =Plus=, =Minus=, and =Times= should raise an error with message "arithmetic
+  overflow"
+  - use =jo= (i.e. jump if overflow) command
+
+*Note:* ANF is changed !!!
+
+#+BEGIN_SRC haskell
+isAnf :: Expr a -> Bool
+isAnf (Number  _ _)    = True
+isAnf (Boolean _ _)    = True
+isAnf (Id      _ _)    = True
+isAnf (Prim1 _ e _)    = isImm e
+isAnf (Prim2 _ e e' _) = isImm e && isImm e'
+isAnf (If c t e _)     = isImm c && isAnf t && isAnf e
+isAnf (Let _ e e' _)   = isAnf e && isAnf e'
+
+isImm :: Expr a -> Bool
+isImm (Number  _ _) = True
+isImm (Boolean _ _) = True
+isImm (Id      _ _) = True
+isImm _             = False
+#+END_SRC
+
+* Calling external functions
+
+To properly call into C functions (like `error`), we must play by the rules of
+the [[http://www.cs.virginia.edu/~evans/cs216/guides/x86.html#calling][C calling convention]]
+
+1. The /local variables/ of an (executing) function are saved in its /stack frame/.
+2. The /start/ of the stack frame is saved in register =EBP=,
+3. The /start/ of the /next/ frame is saved in register =ESP=.
+
+** Calling Convention
+
+We must *preserve the above invariant* as follows:
+
+*** In the Callee
+
+At the *start* of the function
+
+#+BEGIN_SRC asm
+push ebp          ; save (previous, caller's) ebp on stack
+mov ebp, esp      ; make current esp the new ebp
+sub esp, 4*N      ; "allocate space" for N local variables
+#+END_SRC
+
+At the *end* of the function
+
+#+BEGIN_SRC asm
+mov esp, ebp      ; restore value of esp to that just before call
+                  ; now, value at [esp] is caller's (saved) ebp
+pop ebp           ; so: restore caller's ebp from stack [esp]
+ret               ; return to caller
+#+END_SRC
+
+*** In the Caller
+
+To call a function =target= that takes =N= parameters:
+
+#+BEGIN_SRC asm
+push arg_N        ; push last arg first ...
+...
+push arg_2        ; then the second ...
+push arg_1        ; finally the first
+call target       ; make the call (which puts return addr on stack)
+add esp, 4*N      ; now we are back: "clear" args by adding 4*numArgs
+#+END_SRC
+
+** Counting Variables for the Stack
+
+Example: How much stack space do we need for this expression ?
+
+#+BEGIN_SRC ocaml
+let x = (let y = 10,
+             a = 10,
+             b = y + a
+         in  b + 5),
+    y = (let z = 20
+         in  z - 5)
+in  x + y
+#+END_SRC
+

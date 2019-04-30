@@ -303,10 +303,9 @@ if (let anf0 = 20 + 30
     in  anf0 + 40):
   let anf1 = add1(2),
       anf2 = 1 + anf1,
-      anf3 = 3 + 4,
-      anf4 = sub1(anf3),
-      anf5 = anf2 + anf4
-  in anf5 + 10
+      anf3 = sub1(3 + 4),
+      anf4 = anf2 + anf3
+  in anf4 + 10
 else:
   12
 #+END_SRC
