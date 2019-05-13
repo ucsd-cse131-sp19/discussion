@@ -1,0 +1,13 @@
+#+TITLE: Week 5 - Diamondback Review
+#+AUTHOR: Rami Gökhan Kıcı
+#+OPTIONS: toc:nil num:0
+
+* Questions
+** Question 1
+
+Write a tail-recursive =factorial= function
+
+#+BEGIN_SRC python
+def factorial(n):
+
+#+END_SRC

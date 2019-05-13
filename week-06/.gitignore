@@ -1,0 +1,8 @@
+/bins/
+
+/output/*.log
+/output/*.result
+/output/*.vresult
+/output/*.run
+/output/*.s
+/output/*.anf

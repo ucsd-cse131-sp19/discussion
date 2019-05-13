@@ -110,6 +110,15 @@ call target       ; make the call (which puts return addr on stack)
 add esp, 4*N      ; now we are back: "clear" args by adding 4*numArgs
 #+END_SRC
 
+*** Example
+
+#+BEGIN_SRC ocaml
+let x = 1,
+    y = 2,
+    z = x + y,
+in  f(z)
+#+END_SRC
+
 ** Counting Variables for the Stack
 
 Example: How much stack space do we need for this expression ?
@@ -123,4 +132,3 @@ let x = (let y = 10,
          in  z - 5)
 in  x + y
 #+END_SRC
-
