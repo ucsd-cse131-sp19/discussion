@@ -1,8 +1,62 @@
-#+TITLE: Week 5 - Diamondback Review
+#+TITLE: Week 5 - Tail Call Optimization
 #+AUTHOR: Rami Gökhan Kıcı
 #+OPTIONS: toc:nil num:0
 
-* Questions
+* Static Checking
+
+[[https://github.com/ucsd-cse131-sp19/04-diamondback/blob/master/lib/Language/Diamondback/Utils.hs#L43][dupBy]] groups the elements of the given list based on the given function, and
+returns the groups with more than one elements:
+#+BEGIN_SRC haskell
+dupBy :: (Ord k) => (a -> k) -> [a] -> [[a]]
+#+END_SRC
+
+[[https://github.com/ucsd-cse131-sp19/04-diamondback/blob/master/lib/Language/Diamondback/Checker.hs#L57][duplicateFunErrors]] takes a list of function declarations, groups them based on
+their function names and
+#+BEGIN_SRC haskell
+duplicateFunErrors :: [BareDecl] -> [UserError]
+#+END_SRC
+
+Use the following functions to report the errors:
+#+BEGIN_SRC haskell
+errDupFun     :: (Located (Bind a)) => Decl a -> UserError
+errDupParam   :: (Located (Bind a)) => Bind a -> UserError
+errDupBind    :: (Located (Bind a)) => Bind a -> UserError
+errLargeNum   :: SourceSpan -> Integer -> UserError
+errUnboundVar :: SourceSpan -> Id -> UserError
+errUnboundFun :: SourceSpan -> Id -> UserError
+errCallArity  :: SourceSpan -> Id -> UserError
+#+END_SRC
+
+* Functions
+
+[[https://github.com/ucsd-cse131-sp19/04-diamondback#concrete-syntax][Concrete Syntax]]
+
+* Question
+
+Input file: [[file:input/test01.diamond]]
+
+- What is the output of =test(N)= look like ?
+- Does it terminate ? Does it crash ? Why ?
+
+* Tail Recursive Functions
+** Definition
+
+A *tail recursive function* is one where the recursive call is the last
+operation done by the function, i.e. where the value returned by the function is
+the same as the value returned by the recursive call.
+
+** Tail Positions
+
+1. The body of a function
+2. If a let-binding is in tail position, then
+  - The body is in tail position,
+  - The binding(s) are *not* in tail position.
+3. If a conditional is in tail position, then
+  - Its branches are in tail position, but
+  - The condition is *not* in tail position
+4. The operands of a unary/binary operator or a function are *never* in tail
+   position
+
 ** Question 1
 
 Write a tail-recursive =factorial= function
@@ -10,4 +64,98 @@ Write a tail-recursive =factorial= function
 #+BEGIN_SRC python
 def factorial(n):
 
+#+END_SRC
+
+** Is =foldl= tail recursive ?
+
+https://upload.wikimedia.org/wikipedia/commons/5/5a/Left-fold-transformation.png
+
+#+BEGIN_SRC haskell
+foldl :: (acc -> a -> acc) -> acc -> [a] -> acc
+foldl f acc as =
+  case as of
+    []     -> acc
+    a:rest -> let acc' = f acc a
+              in foldl f acc' rest
+#+END_SRC
+
+** Is =foldr= tail recursive ?
+
+https://upload.wikimedia.org/wikipedia/commons/3/3e/Right-fold-transformation.png
+
+#+BEGIN_SRC haskell
+foldr :: (a -> acc -> acc) -> acc -> [a] -> acc
+foldr f acc as =
+  case as of
+    []     -> acc
+    a:rest -> let acc' = foldr f acc rest
+              in f a acc'
+#+END_SRC
+
+* Marking Tail Recursive Calls
+
+How can we update =tails= to mark only *recursive calls* at the tail positions ?
+
+#+BEGIN_SRC haskell
+tailsR :: Expr a -> Expr (a, Bool)
+tailsR = go True
+  where
+    go _ (Number n l)      = noTail l (Number n)
+    go _ (Boolean b l)     = noTail l (Boolean b)
+    go _ (Id     x l)      = noTail l (Id x)
+    go _ (Prim2 o e1 e2 l) = noTail l (Prim2 o e1' e2')
+      where
+        [e1', e2']         = go False <$> [e1, e2]
+    go b (If c e1 e2 l)    = noTail l (If c' e1' e2')
+      where
+        c'                 = go False c
+        e1'                = go b     e1
+        e2'                = go b     e2
+    go b (Let x e1 e2 l)   = noTail l (Let x e1' e2')
+      where
+        e1'                = go False e1
+        e2'                = go b     e2
+    go b (App f es l)      = App f es' (l, b)
+      where
+        es'                = go False <$> es
+
+    noTail l z = z (l, False)
+#+END_SRC
+
+* Example
+
+How does the stack look like during the execution ?
+
+#+BEGIN_SRC python
+def loop(r, i):
+  if (0 <= i):
+    let rr = r + i
+      , ii = i - 1
+    in
+      loop(rr, ii)
+  else:
+    r
+
+def sumTo(n):
+  loop(0, n)
+
+sumTo(10000)
+#+END_SRC
+
+* Discussion
+
+Is it possible to apply tail call optimization to non-recursive calls as well ?
+How or why not ?
+
+#+BEGIN_SRC python
+def f(x):
+  g(x+1, 0)
+
+def g(x, y):
+  if x > y:
+    g(x - 1, y + 2 * x)
+  else:
+    f(y)
+
+f(0)
 #+END_SRC

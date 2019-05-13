@@ -3,6 +3,8 @@ EXT=diamond
 STACK=stack --allow-different-user
 COMPILEREXEC=bins/$(COMPILER)
 
+TESTS=$(patsubst input/%.$(EXT),%,$(wildcard input/*.$(EXT)))
+
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
   FORMAT=elf32
@@ -12,17 +14,19 @@ ifeq ($(UNAME), Darwin)
 endif
 endif
 
-.PHONY: clean
+.PHONY: clean $(TESTS)
 
 # make run silent
 .SILENT:
+
+$(TESTS):%: output/%.result
+
 
 output/%.anf: input/%.$(EXT)
 	bins/anf $< > $@
 
 output/%.result: output/%.run
-	$< > $@
-	cat $@
+	$< > $@ && cat $@
 
 output/%.vresult: output/%.run
 	valgrind $(LIMIT) $< > $@

@@ -1,0 +1,10 @@
+def test2(i, n):
+  if (i > n): 
+    0
+  else:
+    1 + test2(print(i) + 1, n)
+
+def test(n):
+  test2(1, n)
+
+test(10)
