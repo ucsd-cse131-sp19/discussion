@@ -1,6 +1,10 @@
-#+TITLE: Week 5 - Tail Call Optimization
+#+TITLE: Week 6 - Tail Call Optimization
 #+AUTHOR: Rami Gökhan Kıcı
 #+OPTIONS: toc:nil num:0
+
+* Functions
+
+[[https://github.com/ucsd-cse131-sp19/04-diamondback#concrete-syntax][Concrete Syntax]]
 
 * Static Checking
 
@@ -26,10 +30,6 @@ errUnboundVar :: SourceSpan -> Id -> UserError
 errUnboundFun :: SourceSpan -> Id -> UserError
 errCallArity  :: SourceSpan -> Id -> UserError
 #+END_SRC
-
-* Functions
-
-[[https://github.com/ucsd-cse131-sp19/04-diamondback#concrete-syntax][Concrete Syntax]]
 
 * Question
 
@@ -60,11 +60,6 @@ the same as the value returned by the recursive call.
 ** Question 1
 
 Write a tail-recursive =factorial= function
-
-#+BEGIN_SRC python
-def factorial(n):
-
-#+END_SRC
 
 ** Is =foldl= tail recursive ?
 
@@ -97,8 +92,10 @@ foldr f acc as =
 How can we update =tails= to mark only *recursive calls* at the tail positions ?
 
 #+BEGIN_SRC haskell
-tailsR :: Expr a -> Expr (a, Bool)
-tailsR = go True
+-- tails :: Expr a -> Expr (a, Bool)
+-- tails = go True
+tails :: Maybe Id -> Expr a -> Expr (a, Bool)
+tails g = go True
   where
     go _ (Number n l)      = noTail l (Number n)
     go _ (Boolean b l)     = noTail l (Boolean b)
@@ -115,7 +112,8 @@ tailsR = go True
       where
         e1'                = go False e1
         e2'                = go b     e2
-    go b (App f es l)      = App f es' (l, b)
+    -- go b (App f es l)      = App f es' (l, b)
+    go b (App f es l)      = App f es' (l, b && g == Just f)
       where
         es'                = go False <$> es
 

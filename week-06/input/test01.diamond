@@ -7,4 +7,4 @@ def test2(i, n):
 def test(n):
   test2(1, n)
 
-test(10)
+test(1000000000)
