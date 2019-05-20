@@ -1,0 +1,85 @@
+#+TITLE: Week 8 - Heap Data
+#+AUTHOR: Rami Gökhan Kıcı
+#+OPTIONS: toc:nil num:0
+
+* Structured Data !!!
+
+- Currently, our only values are integers and bools.
+- In order to have an "interesting" language, we should be able to support
+  *structured, arbitrarily sized data*
+
+* Changes to our setup
+** Types.hs
+
+#+BEGIN_SRC haskell
+data Expr a = 
+    Tuple   [Expr a]   -- list of elements
+            a          -- label
+
+  | GetItem !(Expr a)  -- tuple
+            !(Expr a)  -- index
+            a          -- label
+
+data Prim1 = IsTuple   -- isTuple(...) in concrete syntax
+
+data DynError = IndexLow | IndexHigh
+
+data Ty = TNumber | TBoolean | TTuple
+
+data Reg = EAX | EBX | ESP | EBP | ESI
+#+END_SRC
+
+** C file
+
+#+BEGIN_SRC c
+void print_tuple(int val){
+  // FIXME
+}
+
+// ...
+
+#define HEAP_SIZE 100000
+
+int main(int argc, char** argv) {
+  int* HEAP = calloc(HEAP_SIZE, sizeof (int));
+  int result = our_code_starts_here(HEAP);
+  print(result);
+  return 0;
+}
+#+END_SRC
+
+** Asm.hs
+
+#+BEGIN_SRC haskell
+prelude :: [Instruction]
+prelude =
+  [ IMov (Reg ESI) (RegOffset 4 ESP)     -- move HEAP into ESI register
+  , IAdd (Reg ESI) (Const 8)             -- increment ESI to the next 3 bit aligned value
+  , IAnd (Reg ESI) (HexConst 0xFFFFFFF8)
+  ]
+#+END_SRC
+
+* Discussion
+
+Could we use Egg instead of Haskell to implement our compiler?
+
+- If your answer is yes, how would you do it?
+- Otherwise, what are the missing features?
+
+* Accessing a Tuple Element
+
+How do we compile =t[i]= where =t= and =i= are expressions ? 
+
+1. Compile =t=, check if it is a /tuple/
+2. Compile =i=, check if it is an /integer/
+3. Check if 0 <= =i= < size of =t=
+4. Return =t[i]=
+
+** Question
+
+How does the Assembly output look like when you compile the expression below ?
+
+#+BEGIN_SRC python
+( (1,(2,3))[1] )[0]
+#+END_SRC
+  
