@@ -244,4 +244,33 @@ closure_f_end_1:
 
 ** Calling a closure
 
-TBD
+#+BEGIN_SRC haskell
+compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
+#+END_SRC
+
+1. Check if the thing we are trying to call is a closure or not
+
+#+BEGIN_SRC asm
+  mov eax, [ebp - 12]   ; load f into eax
+  and eax, 111b         ; keep only last 3 bits
+  cmp eax, 101b         ; check if the tag is 101
+  jne error_non_closure ; if not, jump to error handler
+#+END_SRC
+
+2. Check if the arity of the closure is correct
+
+#+BEGIN_SRC asm
+  mov eax, [ebp - 12]   ; load f into eax
+  sub eax, 101b         ; remove the tag
+  cmp [eax], 1          ; check if the arity is 1
+  jne error_wrong_arity ; if not, jump to error handler
+#+END_SRC
+
+3. Make the call
+
+#+BEGIN_SRC asm
+  mov eax, [eax + 4] ; eax contains the function code pointer
+  push [ebp - 12]    ; push the closure as the first variable
+  push 10            ; push the first argument
+  call eax           ; call the closure
+#+END_SRC
