@@ -176,17 +176,15 @@ closure_f_start_1:
   ;; function body
 closure_f_end_1:
   ;; store the closure details
-  mov [esi     ], 1                 ; arity
+  mov [esi], 1                      ; arity
   mov [esi +  4], closure_f_start_1 ; function code pointer
   mov ebx, [ebp - 4]                ; store free variable x
   mov [esi +  8], ebx
   mov ebx, [ebp - 8]                ; store free variable y
   mov [esi + 12], ebx
-
   ;; tagging
   mov eax, esi
   or  eax, 101b
-
   ;; update heap pointer
   add esi, 16
 #+END_SRC
@@ -223,9 +221,7 @@ closure_f_start_1:
   push ebp                 
   mov ebp, esp
   sub esp, 12           ; Allocate 3 stack variables
-
   ;; ... restore free variables ...
-
   ;;  x + y (ignoring dynamic checks)
   mov eax, [ebp - 4]    ; eax <- x
   add eax, [ebp - 8]    ; eax <- x + y
@@ -274,3 +270,4 @@ compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
   push 10            ; push the first argument
   call eax           ; call the closure
 #+END_SRC
+
