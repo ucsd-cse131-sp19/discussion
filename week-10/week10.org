@@ -1,4 +1,4 @@
-#+TITLE: Week 10 - GC & Closures
+#+TITLE: Week 10 - Garbage Collection and Closures
 #+AUTHOR: Rami Gökhan Kıcı
 #+OPTIONS: toc:nil num:0
 
@@ -107,3 +107,146 @@ in (x, x, x)
 #+END_SRC
 
 * Closures
+** Memory Layout
+
+Closures are stored in memory as a tuple
+
+#+BEGIN_SRC
+--------------------------------------------------------------------
+| arity | code-ptr | free var1 | ... | free varN | (maybe padding) |
+--------------------------------------------------------------------
+#+END_SRC
+
+For example, in this program:
+
+#+BEGIN_SRC ocaml
+let x = 10 in
+let y = 12 in
+let f = (lambda z: x + y + z) in
+f(5)
+#+END_SRC
+
+The memory layout of the =lambda= would be:
+
+#+BEGIN_SRC
+----------------------------------
+|   1  | <address> |  20  |  24  |
+----------------------------------
+#+END_SRC
+
+- There is one parameter =z= to the function, so 1 is stored for arity.
+- =x= and =y= are the free variables, so we store 20 and 24. These numbers are
+  the values of them at the creation time of the closure.
+
+We can tag the least significant 3 bits with =101= to distinguish closures from
+other types of values.
+
+** Computing Free Variables
+
+#+BEGIN_SRC haskell
+freeVars :: Expr -> [Id]
+freeVars e = S.toList (go e)
+  where
+    go :: Expr -> S.Set Id
+    go (Id x)        = S.singleton x
+    go (Number _)    = S.empty
+    go (Boolean _)   = S.empty
+    go (If e e1 e2)  = S.unions (map go [e1, e2, e3])
+    go (App e es)    = S.unions (map go (e:es))
+    go (Let x e1 e2) = S.union (go e1) (S.delete x (go e2))
+    go (Lam xs e)    = S.difference (go e) (S.fromList xs)
+#+END_SRC
+
+** Compiling a Closure
+
+Let's compile the closure in the Fox program below
+
+#+BEGIN_SRC ocaml
+let x = 10 in
+let y = 12 in
+let f = (lambda z: x + y + z) in
+f(5)
+#+END_SRC
+
+
+*** Allocating the closure in the heap
+
+#+BEGIN_SRC asm
+  ;; store the closure details
+  mov [esi     ], 1                 ; arity
+  mov [esi +  4], closure_f_start_1 ; function code pointer
+  mov [esi +  8], 20                ; free variable x
+  mov [esi + 12], 24                ; free variable y
+
+  ;; tagging
+  mov eax, esi
+  or  eax, 101b
+
+  ;; update heap pointer
+  add esi, 16
+#+END_SRC
+
+*** Restoring Saved Variables
+
+The free variables are actually stored inside a "tuple" in the heap. So, we need
+to be able to access this tuple inside the function. We can solve this by
+calling the lambda function with the address of the closure as its first
+argument.
+
+Once we can access the closure, this step is simple. We just have to copy the
+free variables from the closure into the current stack frame:
+
+#+BEGIN_SRC asm
+  mov eax, [ebp + 8]            ; move the closure's address into ebp
+  sub eax, 5                    ; remove the tag
+  mov ebx, [eax + 8]            ; move the first free var to
+  mov [ebp - 4], ebx            ; the first local variable
+  mov ebx, [eax + 12]           ; move the second free var to
+  mov [ebp - 8], ebx            ; the second local variable
+#+END_SRC
+
+*** Compiling the function body
+
+We basically have to call =compileEnv= with an environment that contains the
+free variables and function arguments pointing to the correct place in the
+stack.
+
+In the end, we emit the following code for the closure:
+
+#+BEGIN_SRC asm
+  jmp closure_f_end_1
+closure_f_start_1:
+  ;; function entry
+  push ebp                 
+  mov ebp, esp
+  sub esp, 12           ; Allocate 3 stack variables
+  ;; restore free variables
+  mov eax, [ebp + 8]    ; move the closure's address into ebp
+  sub eax, 5            ; remove the tag
+  mov ebx, [eax + 8]    ; move the first free var x to
+  mov [ebp - 4], ebx    ; the first local variable
+  mov ebx, [eax + 12]   ; move the second free var y to
+  mov [ebp - 8], ebx    ; the second local variable
+  ;;  x + y (ignoring dynamic checks)
+  mov eax, [ebp - 4]    ; eax <- x
+  add eax, [ebp - 8]    ; eax <- x + y
+  ;; anf0 = x + y
+  mov [ebp - 12], eax   ; anf0 <- x + y 
+  ;; anf0 + z
+  mov eax, [ebp - 12]   ; eax <- anf0
+  add eax, [ebp + 12]   ; eax <- anf0 + z
+  ;; function exit
+  mov esp, ebp
+  pop ebp
+  ret
+closure_f_end_1:
+  mov [esi     ], 1
+  mov [esi +  4], closure_f_start_1
+  mov [esi +  8], 20
+  mov [esi + 12], 24
+  mov eax, esi
+  or  eax, 101b ; tag closure
+  add esi, 16
+#+END_SRC
+
+** Calling a closure
