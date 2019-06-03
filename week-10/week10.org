@@ -244,7 +244,7 @@ closure_f_end_1:
 compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
 #+END_SRC
 
-1. Check if the thing we are trying to call is a closure or not
+*** 1. Check if the thing we are trying to call is a closure or not
 
 #+BEGIN_SRC asm
   mov eax, [ebp - 12]   ; load f into eax
@@ -253,7 +253,7 @@ compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
   jne error_non_closure ; if not, jump to error handler
 #+END_SRC
 
-2. Check if the arity of the closure is correct
+*** 2. Check if the arity of the closure is correct
 
 #+BEGIN_SRC asm
   mov eax, [ebp - 12]   ; load f into eax
@@ -262,7 +262,7 @@ compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
   jne error_wrong_arity ; if not, jump to error handler
 #+END_SRC
 
-3. Make the call
+*** 3. Make the call
 
 #+BEGIN_SRC asm
   mov eax, [eax + 4] ; eax contains the function code pointer
