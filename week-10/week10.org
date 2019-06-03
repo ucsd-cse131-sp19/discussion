@@ -1,0 +1,109 @@
+#+TITLE: Week 10 - GC & Closures
+#+AUTHOR: Rami Gökhan Kıcı
+#+OPTIONS: toc:nil num:0
+
+* Garbage Collection
+** =try_gc=
+
+#+BEGIN_SRC c
+int* try_gc(int* alloc_ptr,
+            int bytes_needed,
+            int* first_frame,
+            int* stack_top);
+#+END_SRC
+   
+*Arguments:*
+
+- =alloc_ptr= : The current value of ESI (where the next value would be
+  allocated without garbage collection)
+- =bytes_needed= : The number of bytes that the runtime is trying to allocate
+- =first_frame= : The current value of =EBP= (for tracking stack information)
+- =stack_top= : The current value of =ESP= (for tracking stack information)
+
+*Returned Value:*
+
+The new value for =ESI=, for the run time to start using as the allocation
+point. Must be set to a location that provides enough room to fit
+=bytes_allocated= more bytes in the given heap space.
+
+** Call to =try_gc=
+   
+#+BEGIN_SRC haskell
+tupleReserve :: Ann -> Int -> [Instruction]
+tupleReserve l bytes =
+  [ IMov (Reg EAX) (LabelVar "HEAP_END")
+  , ISub (Reg EAX) (Const bytes)
+  -- if ESI <= HEAP_END - size then OK else try_gc
+  , ICmp (Reg ESI) (Reg EAX)
+  , IJl  (MemCheck (annTag l))   
+  , IJe  (MemCheck (annTag l))
+  , IMov (Reg EBX) (Reg ESP)
+  ] ++
+
+  call (Builtin "try_gc")
+  [ Reg ESI                      -- alloc_ptr
+  , Sized DWordPtr (Const bytes) -- bytes_needed
+  , Reg EBP                      -- first_frame
+  , Reg EBX                      -- stack_top
+  ] ++
+
+  -- assume gc success if here; EAX holds new ESI
+  [ IMov (Reg ESI) (Reg EAX)
+  , ILabel (MemCheck (annTag l))
+  ]
+#+END_SRC
+   
+** Global Variables in C
+
+- =HEAP= : Heap's starting location
+- =HEAP_END= : Heap's ending location
+- =HEAP_SIZE= : Heap's size
+- =STACK_BOTTOM= : Store's the beginning of the stack. Set by the the
+  instructions in the =prelude= of =our_code_starts_here= using the initial
+  value of =EBP=.
+
+** =gc=
+
+#+BEGIN_SRC c
+int* gc(int* stack_bottom,  // STACK_BOTTOM
+        int* stack_top,     // stack_top
+        int* first_frame,   // first_frame
+        int* heap_start,    // HEAP
+        int* heap_end )     // HEAP_END
+{
+  int* max_address = mark(stack_top,
+                          first_frame,
+                          stack_bottom,
+                          heap_start);
+
+  int* new_address = forward(heap_start,
+                             max_address);
+
+  redirect(stack_bottom,
+           stack_top,
+           first_frame,
+           heap_start,
+           max_address);
+
+  compact(heap_start,
+          max_address,
+          heap_end);
+
+  return new_address;
+}
+#+END_SRC
+
+** Example
+
+Describe how the stack and heap changes during the execution of the Fox program
+below.
+
+*Note:* This is the =tests/input/gc-0.fox= file from the starter code.
+
+#+BEGIN_SRC ocaml
+let x = let y = (1, 2, 3)
+	in y[0]
+in (x, x, x)
+#+END_SRC
+
+* Closures
