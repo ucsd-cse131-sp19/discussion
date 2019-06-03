@@ -168,15 +168,20 @@ let f = (lambda z: x + y + z) in
 f(5)
 #+END_SRC
 
-
 *** Allocating the closure in the heap
 
 #+BEGIN_SRC asm
+  jmp closure_f_end_1
+closure_f_start_1:
+  ;; function body
+closure_f_end_1:
   ;; store the closure details
   mov [esi     ], 1                 ; arity
   mov [esi +  4], closure_f_start_1 ; function code pointer
-  mov [esi +  8], 20                ; free variable x
-  mov [esi + 12], 24                ; free variable y
+  mov ebx, [ebp - 4]                ; store free variable x
+  mov [esi +  8], ebx
+  mov ebx, [ebp - 8]                ; store free variable y
+  mov [esi + 12], ebx
 
   ;; tagging
   mov eax, esi
@@ -197,12 +202,12 @@ Once we can access the closure, this step is simple. We just have to copy the
 free variables from the closure into the current stack frame:
 
 #+BEGIN_SRC asm
-  mov eax, [ebp + 8]            ; move the closure's address into ebp
+  mov eax, [ebp + 8]            ; move the closure's address into eax
   sub eax, 5                    ; remove the tag
-  mov ebx, [eax + 8]            ; move the first free var to
-  mov [ebp - 4], ebx            ; the first local variable
-  mov ebx, [eax + 12]           ; move the second free var to
-  mov [ebp - 8], ebx            ; the second local variable
+  mov ebx, [eax + 8]            ; move x to the 1st local variable
+  mov [ebp - 4], ebx
+  mov ebx, [eax + 12]           ; move y to the 2nd local variable
+  mov [ebp - 8], ebx
 #+END_SRC
 
 *** Compiling the function body
@@ -210,8 +215,6 @@ free variables from the closure into the current stack frame:
 We basically have to call =compileEnv= with an environment that contains the
 free variables and function arguments pointing to the correct place in the
 stack.
-
-In the end, we emit the following code for the closure:
 
 #+BEGIN_SRC asm
   jmp closure_f_end_1
@@ -240,13 +243,9 @@ closure_f_start_1:
   pop ebp
   ret
 closure_f_end_1:
-  mov [esi     ], 1
-  mov [esi +  4], closure_f_start_1
-  mov [esi +  8], 20
-  mov [esi + 12], 24
-  mov eax, esi
-  or  eax, 101b ; tag closure
-  add esi, 16
+  ;; ...
 #+END_SRC
 
 ** Calling a closure
+
+TBD
