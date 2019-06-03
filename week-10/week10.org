@@ -223,13 +223,9 @@ closure_f_start_1:
   push ebp                 
   mov ebp, esp
   sub esp, 12           ; Allocate 3 stack variables
-  ;; restore free variables
-  mov eax, [ebp + 8]    ; move the closure's address into ebp
-  sub eax, 5            ; remove the tag
-  mov ebx, [eax + 8]    ; move the first free var x to
-  mov [ebp - 4], ebx    ; the first local variable
-  mov ebx, [eax + 12]   ; move the second free var y to
-  mov [ebp - 8], ebx    ; the second local variable
+
+  ;; ... restore free variables ...
+
   ;;  x + y (ignoring dynamic checks)
   mov eax, [ebp - 4]    ; eax <- x
   add eax, [ebp - 8]    ; eax <- x + y
