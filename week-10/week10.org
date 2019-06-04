@@ -266,8 +266,8 @@ compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
 
 #+BEGIN_SRC asm
   mov eax, [eax + 4] ; eax contains the function code pointer
-  push [ebp - 12]    ; push the closure as the first variable
   push 10            ; push the first argument
+  push [ebp - 12]    ; push the value of the closure
   call eax           ; call the closure
 #+END_SRC
 
