@@ -269,5 +269,6 @@ compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
   push 10            ; push the first argument
   push [ebp - 12]    ; push the value of the closure
   call eax           ; call the closure
+  add esp, 8         ; pop the arguments to the closure
 #+END_SRC
 
