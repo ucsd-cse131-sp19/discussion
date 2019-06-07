@@ -112,9 +112,9 @@ in (x, x, x)
 Closures are stored in memory as a tuple
 
 #+BEGIN_SRC
---------------------------------------------------------------------
-| arity | code-ptr | free var1 | ... | free varN | (maybe padding) |
---------------------------------------------------------------------
+----------------------------------------------------------------------------
+| N + 2 | arity | code-ptr | free var1 | ... | free varN | (maybe padding) |
+----------------------------------------------------------------------------
 #+END_SRC
 
 For example, in this program:
@@ -129,14 +129,17 @@ f(5)
 The memory layout of the =lambda= would be:
 
 #+BEGIN_SRC
-----------------------------------
-|   1  | <address> |  20  |  24  |
-----------------------------------
+-----------------------------------------
+| 4 | 1 | <address> | 20 | 24 | padding |
+-----------------------------------------
 #+END_SRC
 
+- The length of the closure is 4: one word for arity, one for the code pointer,
+  and two for the free variables.
 - There is one parameter =z= to the function, so 1 is stored for arity.
 - =x= and =y= are the free variables, so we store 20 and 24. These numbers are
   the values of them at the creation time of the closure.
+- We need another word for the padding.
 
 We can tag the least significant 3 bits with =101= to distinguish closures from
 other types of values.
@@ -176,17 +179,18 @@ closure_f_start_1:
   ;; function body
 closure_f_end_1:
   ;; store the closure details
-  mov [esi], 1                      ; arity
-  mov [esi +  4], closure_f_start_1 ; function code pointer
+  mov [esi], 4                      ; length
+  mov [esi + 4], 1                  ; arity
+  mov [esi + 8], closure_f_start_1  ; function code pointer
   mov ebx, [ebp - 4]                ; store free variable x
-  mov [esi +  8], ebx
-  mov ebx, [ebp - 8]                ; store free variable y
   mov [esi + 12], ebx
+  mov ebx, [ebp - 8]                ; store free variable y
+  mov [esi + 16], ebx
   ;; tagging
   mov eax, esi
   or  eax, 101b
   ;; update heap pointer
-  add esi, 16
+  add esi, 24
 #+END_SRC
 
 *** Restoring Saved Variables
@@ -202,9 +206,9 @@ free variables from the closure into the current stack frame:
 #+BEGIN_SRC asm
   mov eax, [ebp + 8]            ; move the closure's address into eax
   sub eax, 5                    ; remove the tag
-  mov ebx, [eax + 8]            ; move x to the 1st local variable
+  mov ebx, [eax + 12]           ; move x to the 1st local variable
   mov [ebp - 4], ebx
-  mov ebx, [eax + 12]           ; move y to the 2nd local variable
+  mov ebx, [eax + 16]           ; move y to the 2nd local variable
   mov [ebp - 8], ebx
 #+END_SRC
 
@@ -258,14 +262,14 @@ compileEnv env (App v  vs l) = error "TBD: compileEnv.App"
 #+BEGIN_SRC asm
   mov eax, [ebp - 12]   ; load f into eax
   sub eax, 101b         ; remove the tag
-  cmp [eax], 1          ; check if the arity is 1
+  cmp [eax + 4], 1      ; check if the arity is 1
   jne error_wrong_arity ; if not, jump to error handler
 #+END_SRC
 
 *** 3. Make the call
 
 #+BEGIN_SRC asm
-  mov eax, [eax + 4] ; eax contains the function code pointer
+  mov eax, [eax + 8] ; eax contains the function code pointer
   push 10            ; push the first argument
   push [ebp - 12]    ; push the value of the closure
   call eax           ; call the closure
